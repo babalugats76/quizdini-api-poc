@@ -9,6 +9,7 @@ const casing = require('change-case');
 
 /**
  * Table: user 
+ * 
  * Database Fields: 
  *    user_id, 
  *    username, 
@@ -133,8 +134,13 @@ const format = (obj) => {
   return a;
 }
 
+/**
+ * Validation wrapper function.
+ *
+ * Pass validation object reference and override options as appropriate
+ * e.g., consider passing { presence: 'optional' } when updating
+ */
 const validate = async(user, schema, options) => {
-  // Consider passing presence: 'optional' for update validation 
   if (options) Object.assign({
     abortEarly: true,
     presence: 'required',
@@ -171,7 +177,7 @@ const Query = {
   ALL: '*',
 };
 
-const findOpts = {
+const queryOpts = {
   "username": {
     "column": "username",
     "value": "''",
@@ -191,7 +197,7 @@ const findOpts = {
 };
 
 /**
- * Generic SELECT SQL 
+ * Generic SELECT SQL.
  *
  * Examples:
  *   find(Find.USER_ID, { "value": 10020 })
@@ -202,7 +208,7 @@ const find = async(type, options) => {
 
   try {
 
-    let opt = Object.assign(findOpts[type], options);
+    let opt = Object.assign(queryOpts[type], options);
     let sql = "SELECT ?? FROM ??";
     let ph = [columns, table];
 
