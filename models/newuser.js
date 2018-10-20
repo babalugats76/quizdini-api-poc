@@ -1,76 +1,15 @@
 /**
- * Module dependencies 
+ * Module dependencies. 
  */
-
 const md5 = require('md5');
 const mysql = require('mysql');
 const db = require('../db');
 const Joi = require('joi');
 const casing = require('change-case');
 
-/*
- * Helper functions
+/**
+ * Validation objects. 
  */
-
-const map = (obj, fn) => {
-   for (let key in obj) {
-      if (obj.hasOwnProperty(key) && (fn(key) !== key)) {
-         obj[fn(key)] = obj[key];
-         delete obj[key];
-      }
-   }
-   return obj;
-}
-
-const format = (obj) => {
-   a = [];
-   for (i = 0; i < obj.length; i++) {
-      a.push(map(obj[i], casing.camel));
-   }
-   return a;
-}
-
-/*
- * Database Fields: 
- *    user_id, 
- *    username, 
- *    password, 
- *    title, 
- *    first_name, 
- *    last_name, 
- *    city, 
- *    state_code, 
- *    country_code, 
- *    email, 
- *    role, 
- *    is_confirmed, 
- *    created_ts, 
- *    last_login_ts
- */ 
-
-const table = 'user';
-const columns = [
-   'user_id', 
-   'username', 
-   'title', 
-   'first_name', 
-   'last_name', 
-   'city', 
-   'state_code', 
-   'country_code', 
-   'email', 
-   'role', 
-   'is_confirmed', 
-   'created_ts', 
-   'last_login_ts',
-];
-const orderBy: 'last_login_ts';
-const sortOrder: 'DESC';
-
-/*
- * Validation objects 
- */
-
 const createSchema = Joi.object().keys({
    username: Joi.string().max(20).label('Username'),
    password: Joi.string().min(8).max(12).regex(/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\)^&\*])/, 'password').options({
@@ -117,11 +56,67 @@ const updateSchema = Joi.object().keys({
    last_login_ts: Joi.date().label('Last Updated')
  }).and('password','confirm_password').options({ language: { object: { and: '!!Both Password and Confirm Password must be provided' } } });
 
+/**
+ * Helper functions
+ */
+const mapKeys = (obj, fn) => {
+   for (let key in obj) {
+      if (obj.hasOwnProperty(key) && (fn(key) !== key)) {
+         obj[fn(key)] = obj[key];
+         delete obj[key];
+      }
+   }
+   return obj;
+}
+
+const format = (obj) => {
+   a = [];
+   for (i = 0; i < obj.length; i++) {
+      a.push(mapKeys(obj[i], casing.camel));
+   }
+   return a;
+}
+
 const validate = async (user, schema, options) => {
    // Consider passing presence: 'optional' for update validation 
    if (options) Object.assign({ abortEarly: true, presence: 'required', escapeHtml: true }, options);
    return await Joi.validate(user, createSchema, options);
 } 
+
+/**
+ * Table: user 
+ * Database Fields: 
+ *    user_id, 
+ *    username, 
+ *    password, 
+ *    title, 
+ *    first_name, 
+ *    last_name, 
+ *    city, 
+ *    state_code, 
+ *    country_code, 
+ *    email, 
+ *    role, 
+ *    is_confirmed, 
+ *    created_ts, 
+ *    last_login_ts
+ */ 
+const table = 'user';
+const columns = [
+   'user_id', 
+   'username', 
+   'title', 
+   'first_name', 
+   'last_name', 
+   'city', 
+   'state_code', 
+   'country_code', 
+   'email', 
+   'role', 
+   'is_confirmed', 
+   'created_ts', 
+   'last_login_ts',
+];
 
 const create = async (user) => {
    (user.username ? user.username = user.username.toLowerCase() : "")  ;
@@ -141,22 +136,79 @@ const update = async (user) =>  {
    return await db.query('UPDATE ?? SET ? WHERE `user_id` = ? LIMIT 1', [table, user, user.user_id]);
 }
 
-const findById = async (userId) => {
-   return await db.query('SELECT ?? FROM ?? WHERE `user_id` = ? LIMIT 1', [columns, table, user_id]); 
-}
+/** 
+ * Supported SELECT query types.
+ * @enum {string}
+ */
+const Query = {
+   USERNAME: 'username',
+   USER_ID: 'userId',
+   ALL: '*',
+};
 
-const findByUsername = async (username) => {
-   return await db.query('SELECT ?? FROM ?? WHERE `username` = ? LIMIT 1', [columns, table, username]);
-}  
+const findOpts = {
+   "username": {
+      "column": "username",
+      "value": "''",
+      "limit": 1
+   },
+   "userId": {
+      "column": "user_id",
+      "value": "''",
+      "limit": 1
+   },
+   "*": {
+      "order": "last_login_ts",
+      "sort": "DESC",
+      "limit": 20,
+      "offset": 0,
+   }
+};
 
-const getAll = async (limit, offset) => {
-   return await db.query('SELECT ?? FROM ?? ORDER BY ?? ? LIMIT ? OFFSET ?', [columns, table, orderBy, mysql.raw(sortOrder), limit, offset]);
+/**
+ * Generic SELECT SQL 
+ *
+ * Examples:
+ *   find(Find.USER_ID, { "value": 10020 })
+ *   find(Find.USERNAME,{ "value": "babalugats76" })
+ *   find(Find.ALL, { "limit": 10, "offset": 40 })
+ */
+const find = async (type, options) => {
+
+  try {    
+  
+    let opt = Object.assign(findOpts[type], options);
+    let sql = "SELECT ?? FROM ??";             
+    let ph = [columns, table];
+
+    if (opt.column && opt.value) {
+      sql += " WHERE ?? = ?";
+      ph.push(opt.column, opt.value); 
+    }
+  
+    if (opt.order && opt.sort) {
+      sql += " ORDER BY ?? ?";
+      ph.push(opt.order, mysql.raw(opt.sort)); 
+    }
+
+    sql += " LIMIT ?";
+    ph.push(opt.limit);
+ 
+    if (opt.offset) {
+      sql += " OFFSET ?"; 
+      ph.push(opt.offset); 
+    }   
+
+    return await db.query(sql, ph);
+
+  } catch (e) { 
+    throw e; 
+  }
 }
 
 module.exports = { 
+   Query: Query,
+   find: find,
    create: create,
-   update: update,
-   findById: findById, 
-   findByUsername: findByUsername,
-   getAll: getAll
-}
+   update: update 
+};
