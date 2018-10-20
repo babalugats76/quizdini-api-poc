@@ -1,6 +1,6 @@
 /** 
- * Module dependencies.
- */
+ *  * Module dependencies.
+ *   */
 
 const util = require('util');
 const mysql = require('mysql');
@@ -17,8 +17,8 @@ const dbconfig = {
 let pool = undefined;
 
 /**
- * Create database connection pool
- */
+ *  * Create database connection pool
+ *   */
 
 module.exports = {
    getPool: function() {

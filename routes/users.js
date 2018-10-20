@@ -4,9 +4,9 @@ const router = express.Router();
 
 /* GET users listing. */
 router.get('/', userController.getUsers);
-router.get('/:username', userController.getUserByUsername);
+router.get('/:username', userController.getByUsername);
 router.post('/', userController.postUser);
 router.put('/', userController.putUser);
-// Need to implement PUT (to update)
 // Need to implement DELETE (to remove record) 
+router.get('/id/:userId', userController.getById); 
 module.exports = router;
