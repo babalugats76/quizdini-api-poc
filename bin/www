@@ -8,7 +8,6 @@ require('dotenv').config();
 /**
  * Module dependencies.
  */
-const db = require('../database');
 const app = require('../app');
 const debug = require('debug')('quizdini:server');
 const http = require('http');
