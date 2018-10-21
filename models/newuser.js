@@ -7,6 +7,9 @@ const db = require('../db');
 const Joi = require('joi');
 const casing = require('change-case');
 
+const CAMEL = casing.camel;
+const SNAKE = casing.snake;
+
 /**
  * Table: user 
  * 
@@ -129,34 +132,72 @@ const mapKeys = (obj, fn) => {
 const format = (obj) => {
   a = [];
   for (i = 0; i < obj.length; i++) {
-    a.push(mapKeys(obj[i], casing.camel));
+    a.push(mapKeys(obj[i], CAMEL));
   }
   return a;
 }
 
 /**
- * Validation wrapper function.
- *
- * Pass validation object reference and override options as appropriate
- * e.g., consider passing { presence: 'optional' } when updating
+ * Supported validation types.
+ * @enum {string} 
  */
-const validate = async(user, schema, options) => {
-  if (options) Object.assign({
-    abortEarly: true,
-    presence: 'required',
-    escapeHtml: true
-  }, options);
-  return await Joi.validate(user, createSchema, options);
+
+const Validate = {
+  CREATE: 'create',
+  UPDATE: 'update'
+};
+
+validateOpts = {
+  "create": {
+    "schema": createSchema,
+    "options": {
+      "abortEarly": true,
+      "presence": "required",
+      "escapeHtml": true 
+    },
+  },
+  "update": {
+    "schema": updateSchema,
+    "options": {
+      "abortEarly": true,
+      "presence": "optional",
+      "escapeHtml": true
+    }
+  }
+}
+
+/**
+ * Generic validation wrapper.
+ *
+ * Examples:
+ *   const { results, errors } = validate(Validate.CREATE, user)
+ *   const { results, errors } = validate(Validate.UPDATE, user)  
+ */
+const validate = async(type, user) => {
+  try {  
+    user = mapKeys(user, SNAKE); 
+    const results = await Joi.validate(user, validateOpts[type].schema, validateOpts[type].options);  
+    return {"results": results, "errors": null}
+  } catch(e) { 
+    if (e.name === "ValidationError") {
+      const errors = e.details.map((err) => { return {"message": err.message, "label": err.context.label }; });
+      return {"results": null, "errors": errors};
+    }
+    throw e;  
+  }
 }
 
 const create = async(user) => {
+  /** TODO make more elegant using Object.assign, etc. */
   (user.username ? user.username = user.username.toLowerCase() : "");
   (user.password ? user.password = md5(user.password) : "");
   (user.confirm_password ? delete user.confirm_password : "");
   user.role = 'teach';
   user.is_confirmed = 'N';
   user.created_ts = mysql.raw('CURRENT_TIMESTAMP()');
-  return await db.query('INSERT INTO ?? SET ??', [table, user]);
+  console.log(user);
+  /** TODO try-catch for UK **/
+  return await db.query('INSERT INTO ?? SET ?', [table, user]);
 }
 
 const update = async(user) => {
@@ -173,8 +214,8 @@ const update = async(user) => {
  */
 const Query = {
   USERNAME: 'username',
-  USER_ID: 'userId',
-  ALL: '*',
+  ID: 'userId',
+  CUSTOM: '*',
 };
 
 const queryOpts = {
@@ -200,9 +241,9 @@ const queryOpts = {
  * Generic SELECT SQL.
  *
  * Examples:
- *   find(Find.USER_ID, { "value": 10020 })
- *   find(Find.USERNAME,{ "value": "babalugats76" })
- *   find(Find.ALL, { "limit": 10, "offset": 40 })
+ *   users = find(Find.USER_ID, { "value": 10020 })
+ *   users = find(Find.USERNAME,{ "value": "babalugats76" })
+ *   users = find(Find.ALL, { "limit": 10, "offset": 40 })
  */
 const find = async(type, options) => {
 
@@ -222,22 +263,24 @@ const find = async(type, options) => {
       ph.push(opt.order, mysql.raw(opt.sort));
     }
 
-    sql += " LIMIT ?";
-    ph.push(opt.limit);
+    if (opt.limit) {
+      sql += " LIMIT ?";
+      ph.push(opt.limit);
+    }
 
     if (opt.offset) {
       sql += " OFFSET ?";
       ph.push(opt.offset);
     }
-
+ 
     return await db.query(sql, ph);
 
-  } catch (e) {
-    throw e;
-  }
+  } catch (e) { throw(e); }
 }
 
 module.exports = {
+  Validate: Validate,
+  validate: validate,
   Query: Query,
   find: find,
   create: create,
