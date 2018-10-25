@@ -7,7 +7,7 @@ RESTful API to be used by the Quizdini client
 ## TO DO 
 - Figure out how, and where best to, accomplish flag to boolean conversion in the user and other models
 - Lock down CORS, limiting to appropriate domains; see [cors](https://expressjs.com/en/resources/middleware/cors.html)
-- Install [Passport](http://www.passportjs.org/) and integrate JWT solution referring to []()
+- Install [Passport](http://www.passportjs.org/) and integrate JWT solution referring to [this article](https://devdactic.com/restful-api-user-authentication-1/)
 - Enhance CONFIG functionality
   - Begin with moving dotenv back into server and passing in config object(s) via () on app?
   - Extend to feature multiple objects as config data increases
