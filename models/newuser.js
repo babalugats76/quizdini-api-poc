@@ -29,22 +29,7 @@ const SNAKE = casing.snake;
  *    created_ts, 
  *    last_login_ts
  */
-const table = 'user';
-const columns = [
-  'user_id',
-  'username',
-  'title',
-  'first_name',
-  'last_name',
-  'city',
-  'state_code',
-  'country_code',
-  'email',
-  'role',
-  'is_confirmed',
-  'created_ts',
-  'last_login_ts',
-];
+const entity = 'user';
 
 /**
  * Validation objects. 
@@ -119,7 +104,7 @@ const updateSchema = Joi.object().keys({
 /**
  * Helper functions
  */
-const mapKeys = (obj, fn) => {
+const renameKeys = (obj, fn) => {
   for (let key in obj) {
     if (obj.hasOwnProperty(key) && (fn(key) !== key)) {
       obj[fn(key)] = obj[key];
@@ -132,7 +117,7 @@ const mapKeys = (obj, fn) => {
 const format = (obj) => {
   a = [];
   for (i = 0; i < obj.length; i++) {
-    a.push(mapKeys(obj[i], CAMEL));
+    a.push(renameKeys(obj[i], CAMEL));
   }
   return a;
 }
@@ -148,20 +133,20 @@ const Validate = {
 };
 
 validateOpts = {
-  "create": {
-    "schema": createSchema,
-    "options": {
-      "abortEarly": true,
-      "presence": "required",
-      "escapeHtml": true 
+  create: {
+    schema: createSchema,
+    options: {
+      abortEarly: true,
+      presence: 'required',
+      escapeHtml: true 
     },
   },
-  "update": {
-    "schema": updateSchema,
-    "options": {
-      "abortEarly": true,
-      "presence": "optional",
-      "escapeHtml": true
+  update: {
+    schema: updateSchema,
+    options: {
+      abortEarly: true,
+      presence: 'optional',
+      escapeHtml: true
     }
   }
 }
@@ -170,118 +155,84 @@ validateOpts = {
  * Generic validation wrapper.
  *
  * Examples:
- *   const { results, errors } = validate(Validate.CREATE, user)
- *   const { results, errors } = validate(Validate.UPDATE, user)  
+ *   const results = validate(Validate.CREATE, user)
+ *   const results = validate(Validate.UPDATE, user)  
  */
 const validate = async(type, user) => {
-  try {  
-    user = mapKeys(user, SNAKE); 
-    const results = await Joi.validate(user, validateOpts[type].schema, validateOpts[type].options);  
-    return {"results": results, "errors": null}
-  } catch(e) { 
-    if (e.name === "ValidationError") {
-      const errors = e.details.map((err) => { return {"message": err.message, "label": err.context.label }; });
-      return {"results": null, "errors": errors};
-    }
-    throw e;  
-  }
+   user = renameKeys(user, SNAKE);
+   return await Joi.validate(user, validateOpts[type].schema, validateOpts[type].options); 
 }
 
+/**
+ * Create user. 
+ *
+ * Assumes JSON validation and key mapping, i.e., camel to snake
+ * Certain object transformations happen ahead of time, e.g., add role
+ *
+ */
 const create = async(user) => {
-  /** TODO make more elegant using Object.assign, etc. */
-  (user.username ? user.username = user.username.toLowerCase() : "");
-  (user.password ? user.password = md5(user.password) : "");
-  (user.confirm_password ? delete user.confirm_password : "");
+  (user.username ? user.username = user.username.toLowerCase() : '');
+  (user.password ? user.password = md5(user.password) : '');
+  (user.confirm_password ? delete user.confirm_password : '');
   user.role = 'teach';
   user.is_confirmed = 'N';
   user.created_ts = mysql.raw('CURRENT_TIMESTAMP()');
-  console.log(user);
-  /** TODO try-catch for UK **/
-  return await db.query('INSERT INTO ?? SET ?', [table, user]);
+  return await db.query('INSERT INTO ?? SET ?', [entity, user]);
 }
 
 const update = async(user) => {
-  (user.username ? user.username = user.username.toLowerCase() : "");
-  (user.password ? user.password = md5(user.password) : "");
-  (user.confirm_password ? delete user.confirm_password : "");
-  (user.last_login_ts ? user.last_login_ts = mysql.raw('CURRENT_TIMESTAMP()') : "");
-  return await db.query('UPDATE ?? SET ? WHERE `user_id` = ? LIMIT 1', [table, user, user.user_id]);
+  (user.username ? user.username = user.username.toLowerCase() : '');
+  (user.password ? user.password = md5(user.password) : '');
+  (user.confirm_password ? delete user.confirm_password : '');
+  (user.last_login_ts ? user.last_login_ts = mysql.raw('CURRENT_TIMESTAMP()') : '');
+  const results = await db.query('UPDATE ?? SET ? WHERE `user_id` = ? LIMIT 1', [entity, user, user.user_id]);
+  return format(results); 
 }
 
-/** 
- * Supported SELECT query types.
- * @enum {string}
- */
-const Query = {
-  USERNAME: 'username',
-  ID: 'userId',
-  CUSTOM: '*',
-};
-
-const queryOpts = {
-  "username": {
-    "column": "username",
-    "value": "''",
-    "limit": 1
-  },
-  "userId": {
-    "column": "user_id",
-    "value": "''",
-    "limit": 1
-  },
-  "*": {
-    "order": "last_login_ts",
-    "sort": "DESC",
-    "limit": 20,
-    "offset": 0,
-  }
-};
-
 /**
- * Generic SELECT SQL.
- *
- * Examples:
- *   users = find(Find.USER_ID, { "value": 10020 })
- *   users = find(Find.USERNAME,{ "value": "babalugats76" })
- *   users = find(Find.ALL, { "limit": 10, "offset": 40 })
+ * Generic query method 
  */
-const find = async(type, options) => {
+const find = async(options) => {
 
-  try {
+  const o = {
+    columns: [
+      'user_id',
+      'username',
+      'title',
+      'first_name',
+      'last_name',
+      'city',
+      'state_code',
+      'country_code',
+      'email',
+      'role',
+      'is_confirmed',
+      'created_ts',
+      'last_login_ts'
+    ],
+    limit: 1
+  };
 
-    let opt = Object.assign(queryOpts[type], options);
-    let sql = "SELECT ?? FROM ??";
-    let ph = [columns, table];
+  const opt = Object.assign(o,options);
+  
+  let sql = 'SELECT ?? FROM ??'; 
+  let ph = [opt.columns, entity];
 
-    if (opt.column && opt.value) {
-      sql += " WHERE ?? = ?";
-      ph.push(opt.column, opt.value);
-    }
+  (opt.where ? (sql += ' WHERE ?', opt.where = renameKeys(opt.where, SNAKE), ph.push(opt.where)) : '');
+  (opt.order ? (sql += ' ORDER BY ??', ph.push(opt.order), (opt.sort ? (sql += ' ?', ph.push(mysql.raw(opt.sort))) : '' )) : ''); 
+  (opt.limit ? (sql += ' LIMIT ?', ph.push(opt.limit)) : ''); 
+  (opt.offset ? (sql += ' OFFSET ?', ph.push(opt.offset)) : ''); 
 
-    if (opt.order && opt.sort) {
-      sql += " ORDER BY ?? ?";
-      ph.push(opt.order, mysql.raw(opt.sort));
-    }
-
-    if (opt.limit) {
-      sql += " LIMIT ?";
-      ph.push(opt.limit);
-    }
-
-    if (opt.offset) {
-      sql += " OFFSET ?";
-      ph.push(opt.offset);
-    }
- 
-    return await db.query(sql, ph);
-
-  } catch (e) { throw(e); }
+  console.log('OPTIONS', opt);
+  console.log('SQL', sql);
+  console.log('PH', ph); 
+  const results = await db.query(sql, ph);
+  return format(results); 
 }
 
 module.exports = {
   Validate: Validate,
   validate: validate,
-  Query: Query,
   find: find,
   create: create,
   update: update

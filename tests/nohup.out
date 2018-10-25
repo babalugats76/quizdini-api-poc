@@ -1,0 +1,5 @@
+
+> quizdini@0.0.0 start /home/ec2-user/quizdini
+> node ./bin/www
+
+[0mPOST /users/ [33m400 [0m18.078 ms - 589[0m
