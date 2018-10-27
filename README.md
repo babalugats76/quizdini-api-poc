@@ -23,5 +23,5 @@ RESTful API to be used by the Quizdini client
 - Finish DELETE methods in controller and model; develop test cases
 ~~- Convert models and controllers into proper classes~~
 ~~- Consider creating a controller base class which houses **throwIf** and related functions; each controller would inherit from, etc.~~
-- Investigate environment-dependent logging [take a look at Winston](https://www.npmjs.com/package/winston)
+- Investigate environment-dependent logging [refer to this](https://stackoverflow.com/questions/14531232/using-winston-in-several-modules)
 - Investigate Lint
