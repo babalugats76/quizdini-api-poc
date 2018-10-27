@@ -1,30 +1,29 @@
 const request = require('supertest');
 const app = require('../app')
-describe('User Integration Test', () => {
-  test('Create user for tests', async () => {
-    try {
+describe('User Model Integration Test', () => {
+  test('Duplicate User', async () => {
       const response = await request(app)
         .post('/users')
         .send({
-          "username": "jestified",
-          "email": "test@testme.test",
-          "password": "J!st12345",
-          "confirmPassword": "J!st12345",
-          "firstName": "Testy",
-          "lastName": "McTesterson",
+          "username": "babalugats76",
+          "email": "james@colestock.com",
+          "password": "P!ssw0rd",
+          "confirmPassword": "P!ssw0rd",
+          "firstName": "James",
+          "lastName": "Colestock",
           "title": "Mr.",
-          "city": "Testerton",
-          "stateCode": "CA",
+          "city": "Wheat Ridge",
+          "stateCode": "CO",
           "countryCode": "US"   
         })
-        .set('Accept', /application\/json/)
-        .expect(200);  
-      } catch(e) {
-        console.log(e); 
-      }   
+        .set('Accept', /application\/json/);
+      expect(response.status).toBe(409);
+      expect(response.body.success).toBeFalsy();
   });  
   test('Testing /user/:username', async () => {
-    const response = await request(app).get('/users/jestified');
-    expect(response.statusCode).toBe(200);
+    expect.assertions(2);
+    const response = await request(app).get('/users/babalugats76');
+    expect(response.status).toBe(200);
+    expect(response.body.data[0].username).toBe('babalugats76');
   });
 })

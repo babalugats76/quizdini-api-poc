@@ -9,17 +9,19 @@ RESTful API to be used by the Quizdini client
 - Lock down CORS, limiting to appropriate domains; see [cors](https://expressjs.com/en/resources/middleware/cors.html)
 - Install [Passport](http://www.passportjs.org/) and integrate JWT solution referring to [this article](https://devdactic.com/restful-api-user-authentication-1/)
 - Enhance CONFIG functionality
-  - Begin with moving dotenv back into server and passing in config object(s) via () on app?
+  ~~- Begin with moving dotenv back into server and passing in config object(s) via () on app?~~
   - Extend to feature multiple objects as config data increases
 - Continue to build unit testing  [jest](https://jestjs.io/docs/en/getting-started), including:
-   - User create success (200)
-   - User UK/PK violation (409) 
-   - Create schema validation error (400)
-   - Insufficient password complexity (400)
-   - Passwords don't match (400)
+   - USER POST
+     - User create success (200)
+     - User UK/PK violation (409)
+     - Find by username (200)
+     - Create schema validation error (400)
+     - Insufficient password complexity (400)
+     - Passwords don't match (400)
 - Finish PUT methods in controller and model; develop test cases
 - Finish DELETE methods in controller and model; develop test cases
-- Convert models and controllers into proper classes
-- Consider creating a controller base class which houses **throwIf** and related functions; each controller would inherit from, etc.
-- Investigate environment-dependent logging 
+~~- Convert models and controllers into proper classes~~
+~~- Consider creating a controller base class which houses **throwIf** and related functions; each controller would inherit from, etc.~~
+- Investigate environment-dependent logging [take a look at Winston](https://www.npmjs.com/package/winston)
 - Investigate Lint

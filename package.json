@@ -10,7 +10,10 @@
     "verbose": true,
     "roots": [
       "tests"
-    ]
+    ],
+    "setupFiles": [ 
+      "./jest.setup.js"
+    ] 
   },
   "dependencies": {
     "async": "^2.6.1",

@@ -2,7 +2,6 @@
 /**
  * Module dependencies.
  */
-require('dotenv').config();
 const createError = require('http-errors');
 const express = require('express');
 const cors = require('cors');
