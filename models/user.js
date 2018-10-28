@@ -161,12 +161,19 @@ async function update(user) {
   return format(results); 
 }
 
+function typeCast(field, next) {
+  if (field.type === 'STRING' && field.length === 3) {
+    return (field.buffer().toString('utf-8') === "Y");
+  }
+  return next();
+}
+
 /**
  * Generic query method 
  */
 async function find(options) {
 
-  const o = {
+  let o = {
     columns: [
       'user_id',
       'username',
@@ -180,15 +187,25 @@ async function find(options) {
       'role',
       'is_confirmed',
       'created_ts',
-      'last_login_ts'
+      'last_login_ts',
+      mysql.raw("CURRENT_TIMESTAMP() AS `yo`")
     ],
     limit: 1
   };
 
   const opt = Object.assign(o,options);
-  
-  let sql = 'SELECT ?? FROM ??'; 
-  let ph = [opt.columns, entity];
+  let ph = [];  
+
+  const colSql = opt.columns.reduce(
+    function prepareColumns(sql, column, index, columns) {
+      ph.push(column);
+      return ((typeof(column)==='string') ? sql + '??' : sql + '?')
+             + (index === columns.length-1 ? '' : ',');
+    }
+  );
+
+  let sql = 'SELECT ' + colSql + ' FROM ??'; 
+  ph.push(entity);
 
   (opt.where ? (sql += ' WHERE ?', opt.where = renameKeys(opt.where, SNAKE), ph.push(opt.where)) : '');
   (opt.order ? (sql += ' ORDER BY ??', ph.push(opt.order), (opt.sort ? (sql += ' ?', ph.push(mysql.raw(opt.sort))) : '' )) : ''); 
@@ -198,7 +215,7 @@ async function find(options) {
   console.log('OPTIONS', opt);
   console.log('SQL', sql);
   console.log('PH', ph); 
-  const results = await db.query(sql, ph);
+  const results = await db.query({sql: sql, typeCast: typeCast}, ph);
   return format(results); 
 }
 
