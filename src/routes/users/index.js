@@ -6,6 +6,11 @@ const router = express.Router();
 router.get('/:username',
            findUserByUsername, 
            returnUser);
+
+router.post('/',
+           validateUser,
+           createUser,
+           returnUser);
  
 async function findUserByUsername(req, res, next) {
   try {
@@ -14,6 +19,26 @@ async function findUserByUsername(req, res, next) {
     next();
   } catch(err) {
     next(err); 
+  }
+}
+
+async function validateUser(req, res, next) {
+  try {
+    const user = req.body;
+    req.user = await userModel.validate('C', user);     
+    next();
+  } catch(err) {
+    next(err);
+  }
+}
+
+async function createUser(req, res, next) {
+  try {
+    const user = req.user;
+    req.user = await userModel.create(user);
+    next();
+  } catch(err) {
+    next(err);
   }
 }
 
