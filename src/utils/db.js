@@ -1,5 +1,4 @@
 const config = require('./config'); 
-//const { db } = require('c0nfig').default;
 const logger = require('./logger');
 const mysql = require('mysql');
 const Promise = require('bluebird');

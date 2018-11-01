@@ -1,9 +1,9 @@
 const request = require('supertest');
-const app = require('../app')
-describe('User Model Integration Test', () => {
+const app = require('../../src/app')
+describe('User Model Tests', () => {
   test('Duplicate User', async () => {
       const response = await request(app)
-        .post('/users')
+        .post('/v1/users')
         .send({
           "username": "babalugats76",
           "email": "james@colestock.com",
@@ -22,7 +22,7 @@ describe('User Model Integration Test', () => {
   });  
   test('Testing /user/:username', async () => {
     expect.assertions(2);
-    const response = await request(app).get('/users/babalugats76');
+    const response = await request(app).get('/v1/users/babalugats76');
     expect(response.status).toBe(200);
     expect(response.body.data[0].username).toBe('babalugats76');
   });

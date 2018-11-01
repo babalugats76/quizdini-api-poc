@@ -1,5 +1,6 @@
 const express = require('express');
 const logger = require('../../utils/logger.js');
+const { ValidationError, DuplicateError } = require('../../utils/errors.js');
 const userModel = require('../../models/user.js');
 const router = express.Router();
 
@@ -28,7 +29,7 @@ async function validateUser(req, res, next) {
     req.user = await userModel.validate('C', user);     
     next();
   } catch(err) {
-    next(err);
+    next(new ValidationError('User validation failed', err));
   }
 }
 
@@ -38,12 +39,14 @@ async function createUser(req, res, next) {
     req.user = await userModel.create(user);
     next();
   } catch(err) {
+    if (err.errno === 1062) {
+      return next(new DuplicateError(`User ${req.user.username} already exists`, err)); 
+    }
     next(err);
   }
 }
 
 function returnUser (req, res, next) {
-  //throw(new Error('an error has occurred'));
   logger.debug('Returning user data', { user: req.user });
   res.json(req.user);   
 }
