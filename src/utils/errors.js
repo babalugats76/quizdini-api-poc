@@ -4,6 +4,17 @@ class CustomError extends Error {
   }
 }
 
+class UnauthorizedError extends CustomError {
+  constructor(reason, err) {
+    super('Unauthorized');
+    this.name = 'UnauthorizedError';
+    this.reason = reason;
+    this.statusCode = 401;
+    this.err = err;
+    Error.captureStackTrace(this);
+  }
+}
+
 class ValidationError extends CustomError {
  
   constructor(reason, err) {
@@ -35,6 +46,7 @@ class DuplicateError extends CustomError {
 }
 
 module.exports = {
+  UnauthorizedError,
   ValidationError,
   DuplicateError
 }

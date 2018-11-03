@@ -2,6 +2,8 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const passport = require('passport');
+require('./utils/passport');
 const logger = require('./utils/logger.js');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler'); 
@@ -11,6 +13,7 @@ const app = express();
 app.use(cors());
 app.use(morgan('combined', { stream: logger.stream }));
 app.use(express.json());
+app.use(passport.initialize());
 app.use('/v1', routes);
 app.use(errorHandler);
 

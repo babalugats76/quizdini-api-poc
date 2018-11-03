@@ -101,9 +101,6 @@ let joiOpts = {
   }
 };
 
-/**
- *  * Helper functions
- *   */
 function renameKeys(obj, fn) {
   for (let key in obj) {
     if (obj.hasOwnProperty(key) && (fn(key) !== key)) {
@@ -149,8 +146,84 @@ async function create(user) {
   return await query(sql, [entity, user]);
 }
 
+function typeCast(field, next) {
+  if (field.type === 'STRING' && field.length === 3) {
+    return (field.buffer().toString('utf-8') === "Y");
+  }
+  return next();
+}
+
+async function find(options) {
+
+  let o = {
+    "columns": [
+      'user_id',
+      'username',
+      'title',
+      'first_name',
+      'last_name',
+      'city',
+      'state_code',
+      'country_code',
+      'email',
+      'role',
+      'is_confirmed',
+      'created_ts',
+      'last_login_ts',
+      mysql.raw("CURRENT_TIMESTAMP() as `now`")
+    ],
+    "limit": 1
+  };
+
+  if (options.columns) {
+    options.columns = options.columns.concat(o.columns);
+    logger.debug('columns (after push)', { 'column list': options.columns }); 
+  }
+
+  const opt = Object.assign(o, options);
+  let ph = [];  
+
+  const colSql = opt.columns.reduce(
+    function prepareColumns(sql, column, index, columns) {
+      ph.push(column);
+      return ((typeof(column)==='string') ? sql + '??' : sql + '?')
+             + (index === columns.length-1 ? '' : ',');
+    }, ""
+  );
+
+  let sql = 'SELECT ' + colSql + ' FROM ??'; 
+  ph.push(entity);
+
+  (opt.where ? (sql += ' WHERE ?', opt.where = renameKeys(opt.where, SNAKE), ph.push(opt.where)) : '');
+  (opt.order ? (sql += ' ORDER BY ??', ph.push(opt.order), (opt.sort ? (sql += ' ?', ph.push(mysql.raw(opt.sort))) : '' )) : ''); 
+  (opt.limit ? (sql += ' LIMIT ?', ph.push(opt.limit)) : ''); 
+  (opt.offset ? (sql += ' OFFSET ?', ph.push(opt.offset)) : ''); 
+
+  logger.debug('Find options:', { options: opt });
+  logger.debug('Find SQL:', { sql: sql});
+  logger.debug('Placeholder:', { placeholders: ph }); 
+  const results = await query({sql: sql, typeCast: typeCast}, ph);
+  return format(results); 
+}
+
+async function verifyPassword(username, password) {
+  let options = { "columns": [ 
+                    'password'
+                  ],
+                  "where": { 
+                    "username": username 
+                  } 
+                }; 
+  let users = await find(options);
+  logger.debug('user fetched', { users });
+  logger.debug('verifying password');
+  if (users[0] && users[0].password === md5(password)) return users[0]; 
+  return false;  
+}
+
 module.exports = { 
+  verifyPassword,
   validate,
-  find,
-  create 
+  create,
+  find 
 };
