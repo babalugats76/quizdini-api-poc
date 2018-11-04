@@ -175,10 +175,12 @@ async function find(options) {
     "limit": 1
   };
 
+  
+  /*
   if (options.columns) {
     options.columns = options.columns.concat(o.columns);
     logger.debug('columns (after push)', { 'column list': options.columns }); 
-  }
+  } */
 
   const opt = Object.assign(o, options);
   let ph = [];  
@@ -188,13 +190,26 @@ async function find(options) {
       ph.push(column);
       return ((typeof(column)==='string') ? sql + '??' : sql + '?')
              + (index === columns.length-1 ? '' : ',');
-    }, ""
+    }, ' SELECT '
   );
 
-  let sql = 'SELECT ' + colSql + ' FROM ??'; 
+  let sql = colSql + ' FROM ??'; 
   ph.push(entity);
 
-  (opt.where ? (sql += ' WHERE ?', opt.where = renameKeys(opt.where, SNAKE), ph.push(opt.where)) : '');
+  const whereSql = Object.keys(opt.where).reduce(
+    function prepareWhere(sql, clause, index, clauses) {
+      logger.debug('buiding where ' + sql + ' ' + clause + ' ' + index + ' ' + clauses);  
+      ph.push(clause, opt.where[clause]); 
+      return sql + '?? = ?' + (index === clauses.length-1 ? '' : ' AND ');
+    }, ' WHERE '
+  );
+  console.log('WHERE: ' + whereSql);
+
+
+  sql += whereSql; 
+
+  console.log('SQL: ' + sql);
+  //(opt.where ? (sql += " WHERE ?", opt.where = renameKeys(opt.where, SNAKE), ph.push(opt.where)) : "");
   (opt.order ? (sql += ' ORDER BY ??', ph.push(opt.order), (opt.sort ? (sql += ' ?', ph.push(mysql.raw(opt.sort))) : '' )) : ''); 
   (opt.limit ? (sql += ' LIMIT ?', ph.push(opt.limit)) : ''); 
   (opt.offset ? (sql += ' OFFSET ?', ph.push(opt.offset)) : ''); 
@@ -207,18 +222,12 @@ async function find(options) {
 }
 
 async function verifyPassword(username, password) {
-  let options = { "columns": [ 
-                    'password'
-                  ],
-                  "where": { 
-                    "username": username 
-                  } 
-                }; 
-  let users = await find(options);
-  logger.debug('user fetched', { users });
+  let options = { "columns": [ 'username', 'user_id', 'is_confirmed' ],
+                  "where": { "password": md5(password), "username": username } }; 
+  let user = await find(options);
+  logger.debug('user fetched', { user });
   logger.debug('verifying password');
-  if (users[0] && users[0].password === md5(password)) return users[0]; 
-  return false;  
+  return user[0] || false;  
 }
 
 module.exports = { 
